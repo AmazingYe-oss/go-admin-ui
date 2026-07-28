@@ -1,6 +1,5 @@
 stages:
   - lint
-  - install
   - build
   - scan
   - push
@@ -15,17 +14,6 @@ lint:
     - npm run lint 2>&1 || true
     - echo "Lint done"
   allow_failure: true
-
-install:
-  stage: install
-  script:
-    - npm install --registry=https://registry.npmmirror.com --legacy-peer-deps
-  artifacts:
-    paths:
-      - node_modules/
-    expire_in: 1 hour
-  only:
-    - main
 
 build:
   stage: build
@@ -44,12 +32,7 @@ scan:
     - which trivy || (curl -sfL https://mirrors.aliyun.com/trivy/trivy_0.55.0_Linux-64bit.tar.gz -o /tmp/trivy.tar.gz && tar -xzf /tmp/trivy.tar.gz -C /usr/local/bin trivy)
     - docker load -i go-admin-ui-image.tar
     - trivy image --exit-code 1 --severity CRITICAL ${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA} || true
-    - trivy image --format json -o trivy-report.json ${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA} || true
     - echo "Scan done"
-  artifacts:
-    paths:
-      - trivy-report.json
-    expire_in: 7 days
   allow_failure: true
 
 push:
