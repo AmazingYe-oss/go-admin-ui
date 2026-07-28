@@ -5,7 +5,7 @@ stages:
   - push
 
 variables:
-  IMAGE_NAME: "${CI_REGISTRY_IMAGE}"
+  IMAGE_NAME: "localhost/root/go-admin-ui"
 
 lint:
   stage: lint
@@ -38,10 +38,8 @@ scan:
 push:
   stage: push
   script:
-    - docker login -u ${CI_REGISTRY_USER} -p ${CI_REGISTRY_PASSWORD} ${CI_REGISTRY}
     - docker load -i go-admin-ui-image.tar
-    - docker push ${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}
-    - docker push ${IMAGE_NAME}:latest
-    - echo "Pushed"
+    - echo "Image ready: ${IMAGE_NAME}:${CI_COMMIT_SHORT_SHA}"
+    - echo "Push skipped (no registry configured)"
   only:
     - main
