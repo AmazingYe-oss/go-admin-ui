@@ -110,7 +110,7 @@ jobs:
           context: .
           file: ./Dockerfile
           # 支持 amd64 和 arm64 双架构（适配 ARM 服务器）
-          platforms: linux/amd64,linux/arm64
+          # [TEMP DISABLED] platforms: linux/amd64,linux/arm64
           # PR 时只构建不推送
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
