@@ -76,11 +76,12 @@ jobs:
       # 4. 登录阿里云 ACR（PR 构建时跳过）
       - name: Login to Alibaba Cloud ACR
         if: github.event_name != 'pull_request'
-        uses: docker/login-action@v3
+        uses: aliyun/acr-login@v1
+        env:
+          ALIBABA_CLOUD_ACCESS_KEY_ID: ${{ secrets.ACR_ACCESS_KEY_ID }}
+          ALIBABA_CLOUD_ACCESS_KEY_SECRET: ${{ secrets.ACR_ACCESS_KEY_SECRET }}
         with:
           registry: ${{ env.ACR_REGISTRY }}
-          username: ${{ secrets.ACR_USERNAME }}
-          password: ${{ secrets.ACR_PASSWORD }}
 
       # 5. 生成镜像标签
       #    自动生成以下标签：
