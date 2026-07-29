@@ -1,79 +1,56 @@
-# ============================================================
-# go-admin-ui 前端 CI 流水线
-# 构建 Docker 镜像并推送到阿里云容器镜像服务 (ACR)
-# 仓库: https://github.com/AmazingYe-oss/go-admin-ui
-# ============================================================
-
 name: CI - Build & Push to ACR
 
 on:
   push:
     branches: [main, master]
-    
     tags: ['v*']
-
   pull_request:
     branches: [main, master]
-
 
 concurrency:
   group: ci-${{ github.ref }}
   cancel-in-progress: true
 
 env:
-
   ACR_REGISTRY: crpi-he7mqvhihpnvi08o.cn-shanghai.personal.cr.aliyuncs.com
   ACR_NAMESPACE: ${{ secrets.ACR_NAMESPACE }}
-  # 镜像名称
   IMAGE_NAME: go-admin-ui
 
 jobs:
-  # ============================================================
-  # Job 1: 代码质量检查（Lint）
-  # 在 Docker 构建前先跑 ESLint，提前拦截低级错误
-  # ============================================================
-  # [TEMP DISABLED] lint job
-#     name: 代码检查
-#     runs-on: ubuntu-latest
-#     continue-on-error: true
-#     steps:
-#       - name: Checkout
-#         uses: actions/checkout@v4
-
-#       - name: Setup Node.js
-#         uses: actions/setup-node@v4
-#         with:
-#           node-version: '18'
-
-#       - name: Install dependencies
-#         run: npm install --registry=https://registry.npmmirror.com --legacy-peer-deps
-
-#       - name: Run ESLint
-#         run: npm run lint
-
-#   # ============================================================
-#   # Job 2: 构建并推送镜像
-#   # ============================================================
-  build-and-push:
-    name: 构建并推送镜像
+  lint:
+    name: 代码检查
     runs-on: ubuntu-latest
-    # Lint 通过后再构建（PR 场景也跑，验证 Dockerfile 可用）
-  # [TEMP DISABLED] needs: lint
-
+    continue-on-error: true
     steps:
-      # 1. 拉取代码
       - name: Checkout
         uses: actions/checkout@v4
 
-      # 2. 配置 QEMU（多架构建需要）
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+
+      - name: Install dependencies
+        run: npm install --registry=https://registry.npmmirror.com --legacy-peer-deps
+
+      - name: Run ESLint
+        run: npm run lint
+
+  build-and-push:
+    name: 构建并推送镜像
+    runs-on: ubuntu-latest
+    needs: lint
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
 
-      # 3. 配置 Docker Buildx
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v3
 
-      # 4. 登录阿里云 ACR（PR 构建时跳过）
       - name: Login to Alibaba Cloud ACR
         if: github.event_name != 'pull_request'
         uses: docker/login-action@v3
@@ -82,13 +59,6 @@ jobs:
           username: ${{ secrets.ACR_USERNAME }}
           password: ${{ secrets.ACR_PASSWORD }}
 
-      # 5. 生成镜像标签
-      #    自动生成以下标签：
-      #    - latest           （默认分支推送时）
-      #    - <commit-sha>     （每次推送，如 abc1234）
-      #    - <branch-name>    （如 main）
-      #    - <version>        （打 tag 时，如 1.0.0）
-      #    - <major>.<minor>  （打 tag 时，如 1.0）
       - name: Docker meta
         id: meta
         uses: docker/metadata-action@v5
@@ -101,44 +71,37 @@ jobs:
             type=semver,pattern={{version}}
             type=semver,pattern={{major}}.{{minor}}
 
-      # 6. 构建并推送镜像
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
           context: .
           file: ./Dockerfile
-          # 支持 amd64 和 arm64 双架构（适配 ARM 服务器）
-          # [TEMP DISABLED] platforms: linux/amd64,linux/arm64
-          # PR 时只构建不推送
+          platforms: linux/amd64,linux/arm64
           push: ${{ github.event_name != 'pull_request' }}
           tags: ${{ steps.meta.outputs.tags }}
           labels: ${{ steps.meta.outputs.labels }}
-          # 使用 GitHub Actions 缓存加速构建
-          # [TEMP DISABLED] cache-from: type=gha
-          # [TEMP DISABLED] cache-to: type=gha,mode=max
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
 
-  # ============================================================
-  # Job 3: 构建摘要，在 GitHub Actions Summary 页面展示结果
-  # ============================================================
-  # [TEMP DISABLED] summary job
-#     name: 构建摘要
-#     runs-on: ubuntu-latest
-#     needs: [lint, build-and-push]
-#     if: always()
-#     steps:
-#       - name: 输出结果
-#         env:
-#           LINT_RESULT: ${{ needs.lint.result }}
-#           BUILD_RESULT: ${{ needs.build-and-push.result }}
-#           EVENT_NAME: ${{ github.event_name }}
-#         run: |
-#           echo "## CI 构建结果" >> $GITHUB_STEP_SUMMARY
-#           echo "" >> $GITHUB_STEP_SUMMARY
-#           echo "| 阶段 | 状态 |" >> $GITHUB_STEP_SUMMARY
-#           echo "|------|------|" >> $GITHUB_STEP_SUMMARY
-#           echo "| 代码检查 (Lint) | ${LINT_RESULT} |" >> $GITHUB_STEP_SUMMARY
-#           echo "| 构建并推送 | ${BUILD_RESULT} |" >> $GITHUB_STEP_SUMMARY
-#           echo "" >> $GITHUB_STEP_SUMMARY
-#           if [ "${BUILD_RESULT}" = "success" ] && [ "${EVENT_NAME}" != "pull_request" ]; then
-#             echo "✅ 镜像已推送到: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}" >> $GITHUB_STEP_SUMMARY
-#           fi
+  summary:
+    name: 构建摘要
+    runs-on: ubuntu-latest
+    needs: [lint, build-and-push]
+    if: always()
+    steps:
+      - name: 输出结果
+        env:
+          LINT_RESULT: ${{ needs.lint.result }}
+          BUILD_RESULT: ${{ needs.build-and-push.result }}
+          EVENT_NAME: ${{ github.event_name }}
+        run: |
+          echo "## CI 构建结果" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "| 阶段 | 状态 |" >> $GITHUB_STEP_SUMMARY
+          echo "|------|------|" >> $GITHUB_STEP_SUMMARY
+          echo "| 代码检查 (Lint) | ${LINT_RESULT} |" >> $GITHUB_STEP_SUMMARY
+          echo "| 构建并推送 | ${BUILD_RESULT} |" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${BUILD_RESULT}" = "success" ] && [ "${EVENT_NAME}" != "pull_request" ]; then
+            echo "✅ 镜像已推送到: ${{ env.ACR_REGISTRY }}/${{ env.ACR_NAMESPACE }}/${{ env.IMAGE_NAME }}" >> $GITHUB_STEP_SUMMARY
+          fi
