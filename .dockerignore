@@ -1,0 +1,38 @@
+# 版本控制
+.git
+.gitignore
+
+# CI/CD 配置
+.github
+
+# 依赖目录（Dockerfile 内会重新安装）
+node_modules
+
+# 构建产物（Dockerfile 内会重新构建）
+dist
+
+# 编辑器配置
+.vscode
+.idea
+*.swp
+*.swo
+
+# 环境变量文件（敏感信息不入镜像）
+.env.local
+.env.*.local
+
+# 测试文件
+tests
+coverage
+
+# 文档
+*.md
+LICENSE
+
+# 脚本工具
+plop-templates
+plopfile.js
+
+# 系统文件
+.DS_Store
+Thumbs.db
