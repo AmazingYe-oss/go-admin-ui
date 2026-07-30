@@ -38,7 +38,7 @@ jobs:
             ${{ runner.os }}-npm-
 
       - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+        run: npm ci --no-audit --no-fund --legacy-peer-deps
 
       - name: Run lint
         run: npm run lint || true
@@ -122,7 +122,7 @@ jobs:
           cd gitops
           for f in go-admin-ui-chart/values.yaml go-admin-ui-chart/values-ui-dev.yaml go-admin-ui-chart/values-ui-staging.yaml go-admin-ui-chart/values-ui-prod.yaml; do
             if [ -f "$f" ]; then
-              sed -i "s|^  tag:.*$|  tag: \"${NEW_TAG}\"|" "$f"
+              sed -i -E "s|^([[:space:]]+)tag:[[:space:]].*$|\1tag: \"${NEW_TAG}\"|" "$f"
               echo "Updated $f -> tag: ${NEW_TAG}"
             fi
           done
