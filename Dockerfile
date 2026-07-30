@@ -7,6 +7,9 @@ FROM node:18-alpine AS builder
 # 设置工作目录
 WORKDIR /app
 
+# Install build tools for native modules (sass, node-sass, etc.)
+RUN apk add --no-cache python3 make g++
+
 # 1. 缓存优化：先复制依赖描述文件并安装
 # 只要依赖不发生变化，后续修改代码重新构建时，Docker 会复用这一层缓存
 COPY package.json ./
